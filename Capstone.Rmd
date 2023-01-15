@@ -1,0 +1,287 @@
+---
+title: "Capstone"
+author: "Mariia Litvina"
+date: "14.01.2023"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+# Capstone project
+## Analysis for bike-share company
+
+A bike-share program that features more than 5,800 bicycles and 600 docking stations. Cyclistic sets itself apart by also offering reclining bikes, hand tricycles, and cargo bikes, making bike-share more inclusive to people with disabilities and riders who can not use a standard two-wheeled bike. Pricing plans: single-ride passes, full-day passes, and annual memberships. Customers who purchase single-ride or full-day passes are referred to as casual riders. Customers
+who purchase annual memberships are Cyclistic members.
+
+Goal: Design marketing strategies aimed at converting casual riders into annual members.
+
+## Ask
+
+
+How do annual members and casual riders use Cyclistic bikes differently?
+
+Task: To analyze the activity and nature of customer trips at 2 types of fares.
+
+## Prepare
+
+
+```{r}
+#rm(list = ls()) #clean the environment
+```
+
+Download the travel data for the last 12 months, which is all 2022 year.
+
+Download the previous 12 months of Cyclistic trip data:
+https://divvy-tripdata.s3.amazonaws.com/index.html
+
+Data License Agreement:
+https://ride.divvybikes.com/data-license-agreement
+
+
+The data is organized into files by month and stored in the same directory as the code file for analysis.
+
+### Get libraries
+```{r}
+library(tidyverse)  #helps wrangle data
+library(lubridate)  #helps wrangle date attributes
+library(ggplot2)  #helps visualize data
+```
+
+### Get data
+```{r}
+tripdata_01 <- read.csv(file = '202201-divvy-tripdata.csv')
+tripdata_02 <- read.csv(file = '202202-divvy-tripdata.csv')
+tripdata_03 <- read.csv(file = '202203-divvy-tripdata.csv')
+tripdata_04 <- read.csv(file = '202204-divvy-tripdata.csv')
+tripdata_05 <- read.csv(file = '202205-divvy-tripdata.csv')
+tripdata_06 <- read.csv(file = '202206-divvy-tripdata.csv')
+tripdata_07 <- read.csv(file = '202207-divvy-tripdata.csv')
+tripdata_08 <- read.csv(file = '202208-divvy-tripdata.csv')
+tripdata_09 <- read.csv(file = '202209-divvy-tripdata.csv')
+tripdata_10 <- read.csv(file = '202210-divvy-tripdata.csv')
+tripdata_11 <- read.csv(file = '202211-divvy-tripdata.csv')
+tripdata_12 <- read.csv(file = '202212-divvy-tripdata.csv')
+tripdata <- rbind(tripdata_01, tripdata_02, tripdata_03, tripdata_04, tripdata_05, tripdata_06, tripdata_07, tripdata_08, tripdata_09, tripdata_10, tripdata_11, tripdata_12)
+#drop unnecesary dataframes
+rm(tripdata_12)
+rm(tripdata_11)
+rm(tripdata_10)
+rm(tripdata_09)
+rm(tripdata_08)
+rm(tripdata_07)
+rm(tripdata_06)
+rm(tripdata_05)
+rm(tripdata_04)
+rm(tripdata_03)
+rm(tripdata_02)
+rm(tripdata_01)
+```
+
+
+### View data
+```{r}
+head(tripdata)
+```
+
+```{r}
+View(tripdata)
+```
+
+```{r}
+glimpse(tripdata)
+```
+
+```{r}
+colnames(tripdata)
+```
+
+
+## Process
+
+Get data frame in proper data formats.
+
+Convert ride_id and rideable_type to character so that they can stack correctly
+```{r}
+tripdata <-  mutate(tripdata, ride_id = as.character(ride_id)
+                   ,rideable_type = as.character(rideable_type)) 
+```
+
+Calculate the length of each ride by subtracting the column started_at from the column ended_at.
+```{r}
+tripdata$ended <- strptime(tripdata$ended_at, "%Y-%m-%d %H:%M:%S", tz = "EST5EDT")
+tripdata$started <- strptime(tripdata$started_at, "%Y-%m-%d %H:%M:%S", tz = "EST5EDT")
+# Add length of the ride
+tripdata$ride_length_min <- difftime(tripdata$ended,tripdata$started, units = "mins")
+```
+
+Get month of the ride
+```{r}
+# Get month of the ride
+tripdata$month <- month(tripdata$ended)
+```
+
+Get day of the week of the ride, where 1 = Sunday and 7 = Saturday
+```{r}
+# Get day of the week of the ride, where 1 = Sunday and 7 = Saturday
+tripdata$weekday <- wday(tripdata$ended, week_start=1)
+```
+
+```{r}
+View(tripdata)
+```
+
+```{r}
+#View statistics
+summary(tripdata)
+```
+
+
+Delete lines without data, because there are 5858 lines with missing data out of 5667717, which is about 0.1%
+```{r}
+tripdata <- na.omit(tripdata)
+```
+
+Remove "bad" data.
+The dataframe includes a few hundred entries when bikes were taken out of docks and checked for quality by Divvy or ride_length was negative.
+```{r}
+tripdata_v2 <- tripdata[!(tripdata$start_station_name == "HQ QR" | tripdata$ride_length<0),]
+```
+
+Additional:
+Calculate trip distance
+```{r}
+#library(geosphere)
+#Calculate the distance
+#tripdata$ride_dist <- distm(tripdata[,9:10], tripdata[,11:12])
+
+#tripdata %>%
+#  rowwise() %>%
+#  mutate(ride_dist = distm(tripdata[,9:10], tripdata[,11:12]))
+```
+
+
+## Analyze
+
+```{r}
+table(tripdata_v2$member_casual)
+```
+
+There are more members rides then casual.
+
+
+Descriptive analysis on ride_length (all figures in mins)
+```{r}
+mean(tripdata_v2$ride_length) #straight average (total ride length / rides)
+median(tripdata_v2$ride_length) #midpoint number in the ascending array of ride lengths
+max(tripdata_v2$ride_length) #longest ride
+min(tripdata_v2$ride_length) #shortest ride
+```
+
+
+Compare members and casual users by ride time.
+```{r}
+aggregate(tripdata_v2$ride_length ~ tripdata_v2$member_casual, FUN = mean)
+```
+
+```{r}
+aggregate(tripdata_v2$ride_length ~ tripdata_v2$member_casual, FUN = median)
+```
+
+```{r}
+aggregate(tripdata_v2$ride_length ~ tripdata_v2$member_casual, FUN = max)
+```
+
+```{r}
+aggregate(tripdata_v2$ride_length ~ tripdata_v2$member_casual, FUN = min)
+```
+
+On average, member customers have shorter trips than the casual customers.
+
+
+The average ride time by each day for members vs casual users.
+```{r}
+aggregate(tripdata_v2$ride_length ~ tripdata_v2$member_casual + tripdata_v2$weekday, FUN = mean)
+```
+
+
+Analyze rider data by type and weekday.
+```{r}
+tripdata_v2 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>%  #creates weekday field using wday()
+  group_by(member_casual, weekday) %>%  #groups by usertype and weekday
+  summarise(number_of_rides = n()							#calculates the number of rides and average duration 
+  ,average_duration = mean(ride_length_min)) %>% 		# calculates the average duration
+  arrange(member_casual, weekday)								# sorts
+```
+
+
+## Share
+
+### Rides by day of the week
+
+Lets visualize the number of rides by rider type.
+```{r}
+tripdata_v2 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n(), average_duration = mean(ride_length_min)) %>% 
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = number_of_rides, fill = member_casual)) +
+  geom_col(position = "dodge") +
+  labs(title = "Number of rides by day of the week"
+       , subtitle = "Casual vs Member")
+```
+
+Lets create a visualization for average duration.
+```{r}
+tripdata_v2 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n(), average_duration = mean(ride_length_min)) %>% 
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = average_duration, fill = member_casual)) +
+  geom_col(position = "dodge") +
+  labs(title = "Avg duration of rides by day of the week"
+       , subtitle = "Casual vs Member")
+```
+
+
+
+### Rides by month
+
+Lets visualize the number of rides by rider type.
+```{r}
+tripdata_v2 %>% 
+  group_by(member_casual, month) %>% 
+  summarise(number_of_rides = n(), average_duration = mean(ride_length_min)) %>% 
+  arrange(member_casual, month)  %>% 
+  ggplot(aes(x = month, y = number_of_rides, fill = member_casual)) +
+  geom_col(position = "dodge") +
+  labs(title = "Number of rides by month 2022 year"
+       , subtitle = "Casual vs Member")
+```
+
+
+Lets create a visualization for average duration.
+```{r}
+tripdata_v2 %>% 
+  group_by(member_casual, month) %>% 
+  summarise(number_of_rides = n(), average_duration = mean(ride_length_min)) %>% 
+  arrange(member_casual, month)  %>% 
+  ggplot(aes(x = month, y = average_duration, fill = member_casual)) +
+  geom_col(position = "dodge") +
+  labs(title = "Avg duration of rides by month 2022 year"
+       , subtitle = "Casual vs Member")
+```
+
+
+## Act
+
+* The casual riders take their bikes for longer rides than the members do. 
+* The casual riders are more likely to use their bikes to ride on weekends. 
+* The member riders are likely to use their bikes on work days.
+
+For a more in-depth analysis we need more client data such as: client ID in the system, classification of stations depending on the city district (center, cultural area, downtown, countryside), the number and volume of payments, popular destinations for a particular client etc.
+
+Offer clients who get to work an member annual plan, if he or she does not already have one. See who the casual client uses the bike most of the week and let them know about the features and convenience of the annual plan. For more detailed recommendations, I will need a little more information than what was presented.
