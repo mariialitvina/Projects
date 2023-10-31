@@ -1,2 +1,2 @@
 # Projects
-There will be my projects related to analytics and data science
+There will be examples of my projects (technical side) that I have had experience with during my work.
